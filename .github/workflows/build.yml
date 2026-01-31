@@ -8,41 +8,6 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build-native:
-    name: Build ${{ matrix.final_name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Windows x64
-          - os: windows-latest
-            arch: x64
-            executable: conqping.exe
-            final_name: conqping-windows-x64.exe
-            use_qemu: false
-
-          # macOS ARM64 (Apple Silicon)
-          - os: macos-latest
-            arch: arm64
-            executable: conqping
-            final_name: conqping-macos-arm64
-            use_qemu: false
-
-          # macOS x64 (Intel)
-          - os: macos-13
-            arch: x64
-            executable: conqping
-            final_name: conqping-macos-x64
-            use_qemu: false
-
-          # Linux x64
-          - os: ubuntu-latest
-            arch: x64
-            executable: conqping
-            final_name: conqping-linux-x64
-            use_qemu: false
-
   build-linux-arm64:
     name: Build conqping-linux-arm64
     runs-on: ubuntu-latest
@@ -63,7 +28,7 @@ jobs:
         name: conqping-linux-arm64
         path: conqping-linux-arm64
 
-  build-native-rest:
+  build-native:
     needs: []
     name: Build ${{ matrix.final_name }}
     runs-on: ${{ matrix.os }}
@@ -111,7 +76,7 @@ jobs:
         path: ${{ matrix.final_name }}
 
   release:
-    needs: [build-linux-arm64, build-native-rest]
+    needs: [build-linux-arm64, build-native]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
