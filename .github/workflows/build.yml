@@ -118,7 +118,7 @@ jobs:
           path: ConqPing.jar
 
   release:
-    needs: [build, build-java]
+    needs: [build-linux, build-other, build-java]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
