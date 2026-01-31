@@ -224,17 +224,7 @@ int main(int argc, char* argv[]) {
                     remoteIp = ipStr;
                 }
                 
-                start = std::chrono::high_resolution_clock::now(); // Reset start time? No wait, we want connection time.
-                // Actually connect() time includes resolution + socket creation + connect.
-                // But paping measures time from before socket creation usually, or just connect.
-                // Let's measure pure connect time.
-                // Re-measure logic:
-                // Close and re-open for the loop? 
-                // Paping usually includes resolution.
-                
-                // Simplified: We used non-blocking connect. The time 'select' waited is roughly the RTT.
-                // But let's refine: 
-                // Mark start before connect. Mark end after select returns success.
+                // start = std::chrono::high_resolution_clock::now(); // REMOVED: This was causing 0.00ms time
             }
             freeaddrinfo(res);
         }
