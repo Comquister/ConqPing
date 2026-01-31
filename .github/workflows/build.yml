@@ -1,4 +1,4 @@
-name: Build ConqPing
+name: Build ConqPing (Native)
 
 on:
   push:
@@ -8,7 +8,8 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build:
+  build-native:
+    name: Build ${{ matrix.final_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -17,108 +18,100 @@ jobs:
           # Windows x64
           - os: windows-latest
             arch: x64
-            artifact_name: conqping-windows-x64.exe
-            cmake_args: -A x64
-
-          # Windows x86
-          - os: windows-latest
-            arch: x86
-            artifact_name: conqping-windows-x86.exe
-            cmake_args: -A Win32
-
-          # Windows ARM64 (Cross-compile)
-          - os: windows-latest
-            arch: arm64
-            artifact_name: conqping-windows-arm64.exe
-            cmake_args: -A ARM64
-
-          # Linux x64
-          - os: ubuntu-20.04
-            arch: x64
-            artifact_name: conqping-linux-x64
-            cmake_args: -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++"
-
-          # Linux ARM64 (Cross-compile)
-          - os: ubuntu-20.04
-            arch: arm64
-            artifact_name: conqping-linux-arm64
-            install_deps: sudo apt-get update && sudo apt-get install -y g++-aarch64-linux-gnu
-            cmake_args: -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++"
-
-          # Linux x86 (32-bit)
-          - os: ubuntu-20.04
-            arch: x86
-            artifact_name: conqping-linux-x86
-            install_deps: sudo apt-get update && sudo apt-get install -y g++-multilib
-            cmake_args: -DCMAKE_CXX_FLAGS="-m32 -static-libgcc -static-libstdc++"
-
-          # macOS x64 (Intel)
-          - os: macos-15-intel
-            arch: x64
-            artifact_name: conqping-macos-x64
+            executable: conqping.exe
+            final_name: conqping-windows-x64.exe
+            use_qemu: false
 
           # macOS ARM64 (Apple Silicon)
           - os: macos-latest
             arch: arm64
-            artifact_name: conqping-macos-arm64
+            executable: conqping
+            final_name: conqping-macos-arm64
+            use_qemu: false
 
+          # macOS x64 (Intel)
+          - os: macos-13
+            arch: x64
+            executable: conqping
+            final_name: conqping-macos-x64
+            use_qemu: false
+
+          # Linux x64
+          - os: ubuntu-latest
+            arch: x64
+            executable: conqping
+            final_name: conqping-linux-x64
+            use_qemu: false
+
+  build-linux-arm64:
+    name: Build conqping-linux-arm64
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Dependencies
-      if: matrix.install_deps
-      run: ${{ matrix.install_deps }}
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
 
-    - name: Set up CMake
-      uses: jwlawson/actions-setup-cmake@v1.13
-
-    - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
-      working-directory: cpp
-
-    - name: Build
-      run: cmake --build build --config Release
-      working-directory: cpp
-
-    - name: Rename Artifact (Windows)
-      if: runner.os == 'Windows'
-      run: move cpp\build\Release\conqping.exe ${{ matrix.artifact_name }}
-
-    - name: Rename Artifact (Unix)
-      if: runner.os != 'Windows'
-      run: mv cpp/build/conqping ${{ matrix.artifact_name }}
+    - name: Build in Docker (ARM64)
+      run: |
+        docker run --rm -v ${{ github.workspace }}:/app -w /app --platform linux/arm64 ghcr.io/graalvm/native-image-community:17-ol8 \
+          bash -c "javac -d . java/src/ConqPing.java && native-image --no-fallback -H:Name=conqping -cp . ConqPing && mv conqping conqping-linux-arm64"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.artifact_name }}
-        path: ${{ matrix.artifact_name }}
+        name: conqping-linux-arm64
+        path: conqping-linux-arm64
 
-  build-java:
-    runs-on: ubuntu-latest
+  build-native-rest:
+    needs: []
+    name: Build ${{ matrix.final_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            executable: conqping.exe
+            final_name: conqping-windows-x64.exe
+          - os: macos-latest
+            executable: conqping
+            final_name: conqping-macos-arm64
+          - os: macos-13
+            executable: conqping
+            final_name: conqping-macos-x64
+          - os: ubuntu-latest
+            executable: conqping
+            final_name: conqping-linux-x64
+
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '17'
+        distribution: 'graalvm'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build JAR
-        run: |
-          mkdir -p java/bin
-          javac --release 8 -d java/bin java/src/ConqPing.java
-          jar cfe ConqPing.jar ConqPing -C java/bin .
+    - name: Compile Native Image
+      run: |
+        javac -d . java/src/ConqPing.java
+        native-image --no-fallback -H:Name=conqping -cp . ConqPing
 
-      - name: Upload JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: ConqPing.jar
-          path: ConqPing.jar
+    - name: Prepare Artifact
+      shell: bash
+      run: |
+        mv ${{ matrix.executable }} ${{ matrix.final_name }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.final_name }}
+        path: ${{ matrix.final_name }}
 
   release:
-    needs: [build, build-java]
+    needs: [build-linux-arm64, build-native-rest]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -127,9 +120,18 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
 
+      - name: Display structure
+        run: ls -R
+
+      # Iterate over downloaded folders (artifact name = folder name) and move files to root for release
+      - name: Flatten Artifacts
+        run: |
+          mkdir release_files
+          find . -type f -not -path "./release_files/*" -exec cp {} release_files/ \;
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            */*
+          files: release_files/*
+
 
