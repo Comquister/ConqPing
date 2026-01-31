@@ -1,0 +1,9 @@
+#!/bin/sh
+# Cross-platform wrapper for ConqPing implementation
+# Ensure java is in the PATH
+
+# Get directory of this script
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+
+# Run the JAR
+exec java -jar "$DIR/ConqPing.jar" "$@"

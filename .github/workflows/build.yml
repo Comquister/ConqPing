@@ -1,0 +1,134 @@
+name: Build ConqPing
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64
+          - os: windows-latest
+            arch: x64
+            artifact_name: conqping-windows-x64.exe
+            cmake_args: -A x64
+
+          # Windows x86
+          - os: windows-latest
+            arch: x86
+            artifact_name: conqping-windows-x86.exe
+            cmake_args: -A Win32
+
+          # Windows ARM64 (Cross-compile)
+          - os: windows-latest
+            arch: arm64
+            artifact_name: conqping-windows-arm64.exe
+            cmake_args: -A ARM64
+
+          # Linux x64
+          - os: ubuntu-latest
+            arch: x64
+            artifact_name: conqping-linux-x64
+
+          # Linux ARM64 (Cross-compile)
+          - os: ubuntu-latest
+            arch: arm64
+            artifact_name: conqping-linux-arm64
+            install_deps: sudo apt-get update && sudo apt-get install -y g++-aarch64-linux-gnu
+            cmake_args: -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+          # Linux x86 (32-bit)
+          - os: ubuntu-latest
+            arch: x86
+            artifact_name: conqping-linux-x86
+            install_deps: sudo apt-get update && sudo apt-get install -y g++-multilib
+            cmake_args: -DCMAKE_CXX_FLAGS="-m32"
+
+          # macOS x64 (Intel)
+          - os: macos-13
+            arch: x64
+            artifact_name: conqping-macos-x64
+
+          # macOS ARM64 (Apple Silicon)
+          - os: macos-14
+            arch: arm64
+            artifact_name: conqping-macos-arm64
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      if: matrix.install_deps
+      run: ${{ matrix.install_deps }}
+
+    - name: Set up CMake
+      uses: jwlawson/actions-setup-cmake@v1.13
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+      working-directory: cpp
+
+    - name: Build
+      run: cmake --build build --config Release
+      working-directory: cpp
+
+    - name: Rename Artifact (Windows)
+      if: runner.os == 'Windows'
+      run: move cpp\build\Release\conqping.exe ${{ matrix.artifact_name }}
+
+    - name: Rename Artifact (Unix)
+      if: runner.os != 'Windows'
+      run: mv cpp/build/conqping ${{ matrix.artifact_name }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: ${{ matrix.artifact_name }}
+
+  build-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build JAR
+        run: |
+          mkdir -p java/bin
+          javac --release 8 -d java/bin java/src/ConqPing.java
+          jar cfe ConqPing.jar ConqPing -C java/bin .
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v3
+        with:
+          name: ConqPing.jar
+          path: ConqPing.jar
+
+  release:
+    needs: [build, build-java]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            */*
+
