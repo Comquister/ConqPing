@@ -20,7 +20,7 @@ jobs:
     - name: Build in Docker (ARM64)
       run: |
         docker run --rm -v ${{ github.workspace }}:/app -w /app --platform linux/arm64 --entrypoint /bin/bash ghcr.io/graalvm/native-image-community:17-ol8 \
-          -c "javac -d . java/src/ConqPing.java && native-image --no-fallback -H:Name=conqping -cp . ConqPing && mv conqping conqping-linux-arm64"
+          -c "javac -d . java/src/ConqPing.java && native-image --no-fallback -Ob -J-Xmx4g -H:Name=conqping -cp . ConqPing && mv conqping conqping-linux-arm64"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
