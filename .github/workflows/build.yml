@@ -33,23 +33,24 @@ jobs:
             cmake_args: -A ARM64
 
           # Linux x64
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             arch: x64
             artifact_name: conqping-linux-x64
+            cmake_args: -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++"
 
           # Linux ARM64 (Cross-compile)
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             arch: arm64
             artifact_name: conqping-linux-arm64
             install_deps: sudo apt-get update && sudo apt-get install -y g++-aarch64-linux-gnu
-            cmake_args: -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+            cmake_args: -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++"
 
           # Linux x86 (32-bit)
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             arch: x86
             artifact_name: conqping-linux-x86
             install_deps: sudo apt-get update && sudo apt-get install -y g++-multilib
-            cmake_args: -DCMAKE_CXX_FLAGS="-m32"
+            cmake_args: -DCMAKE_CXX_FLAGS="-m32 -static-libgcc -static-libstdc++"
 
           # macOS x64 (Intel)
           - os: macos-15-intel
