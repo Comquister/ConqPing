@@ -52,12 +52,12 @@ jobs:
             cmake_args: -DCMAKE_CXX_FLAGS="-m32"
 
           # macOS x64 (Intel)
-          - os: macos-13
+          - os: macos-15-intel
             arch: x64
             artifact_name: conqping-macos-x64
 
           # macOS ARM64 (Apple Silicon)
-          - os: macos-14
+          - os: macos-latest
             arch: arm64
             artifact_name: conqping-macos-arm64
 
