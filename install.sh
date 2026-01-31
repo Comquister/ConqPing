@@ -27,10 +27,17 @@ URL="https://github.com/$REPO/releases/latest/download/$BINARY_NAME"
 
 echo "Detected OS: $OS_TYPE"
 echo "Detected Architecture: $ARCH_TYPE"
-echo "Downloading $APP_NAME from $URL..."
 
 # Create Install Directory
 mkdir -p "$INSTALL_DIR"
+
+if [ -f "$INSTALL_DIR/$APP_NAME" ]; then
+    echo "Existing installation found. Updating..."
+else
+    echo "Installing $APP_NAME..."
+fi
+
+echo "Downloading $APP_NAME from $URL..."
 
 # Download
 if command -v curl >/dev/null 2>&1; then

@@ -22,7 +22,6 @@ $binaryName = "conqping-windows-$archSuffix.exe"
 $url = "https://github.com/$repo/releases/latest/download/$binaryName"
 
 Write-Host "Detected Architecture: $archSuffix"
-Write-Host "Downloading $appName from $url..."
 
 # Create Install Directory
 if (!(Test-Path -Path $installDir)) {
@@ -30,6 +29,16 @@ if (!(Test-Path -Path $installDir)) {
 }
 
 $destPath = "$installDir\conqping.exe"
+
+if (Test-Path $destPath) {
+    Write-Host "Existing installation found. Updating..."
+    # Try to stop the process if it's running to avoid file lock errors
+    Stop-Process -Name $appName -ErrorAction SilentlyContinue
+} else {
+    Write-Host "Installing $appName..."
+}
+
+Write-Host "Downloading $appName from $url..."
 
 try {
     Invoke-WebRequest -Uri $url -OutFile $destPath
